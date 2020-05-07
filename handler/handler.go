@@ -4,39 +4,71 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/micro-in-cn/tutorials/microservice-in-micro/part3/plugins/session"
 	"github.com/micro/go-micro/v2/client"
-	order "path/to/service/proto/order"
+	"github.com/micro/go-micro/v2/util/log"
+	auth "github.com/xiaobudongzhang/micro-auth/proto/auth"
+	invS "github.com/xiaobudongzhang/micro-inventory-srv/proto/inventory"
+	orders "github.com/xiaobudongzhang/micro-order-srv/proto/orders"
 )
 
-func OrderCall(w http.ResponseWriter, r *http.Request) {
-	// decode the incoming request as json
-	var request map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, err.Error(), 500)
+var (
+	serviceClient orders.OrdersService
+	authClient    auth.Service
+	invClient     invS.InventoryService
+)
+
+type Error struct {
+	Code   string `json:"code"`
+	Detail string `json:"detail"`
+}
+
+func Init() {
+	serviceClient = orders.NewOrdersService("mu.micro.book.service.orders", client.DefaultClient)
+	authClient = auth.NewService("mu.micro.book.service.auth", client.DefaultClient)
+}
+
+func New(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		log.Logf("非法请求")
+		http.Error(w, "非法请求", 400)
 		return
 	}
 
-	// call the backend service
-	orderClient := order.NewOrderService("mu.micro.book.service.order", client.DefaultClient)
-	rsp, err := orderClient.Call(context.TODO(), &order.Request{
-		Name: request["name"].(string),
+	r.ParseForm()
+
+	bookId, _ := strconv.ParseInt(r.Form.Get("bookId"), 10, 10)
+
+	response := map[string]interface{}{}
+
+	rsp, err := serviceClient.New(context.TODO(), &orders.Request{
+		BookId: bookId,
+		UserId: session.GetSession(w, r).Values["userId"].(int64),
 	})
+
+	response["ref"] = time.Now().UnixNano()
+
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		response["success"] = false
+		response["error"] = Error{
+			Detail: err.Error(),
+		}
+	} else {
+		response["success"] = true
+		response["orderId"] = rsp.Order.Id
 	}
 
-	// we want to augment the response
-	response := map[string]interface{}{
-		"msg": rsp.Msg,
-		"ref": time.Now().UnixNano(),
-	}
+	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 
-	// encode and write the response as json
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+}
+
+func Hello(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("hello"))
 }
