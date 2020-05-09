@@ -27,7 +27,7 @@ type Error struct {
 }
 
 func Init() {
-	serviceClient = orders.NewOrdersService("mu.micro.book.service.orders", client.DefaultClient)
+	serviceClient = orders.NewOrdersService("mu.micro.book.service.order", client.DefaultClient)
 	authClient = auth.NewService("mu.micro.book.service.auth", client.DefaultClient)
 }
 
@@ -70,5 +70,5 @@ func New(w http.ResponseWriter, r *http.Request) {
 }
 
 func Hello(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello"))
+	w.Write([]byte("hello order web"))
 }

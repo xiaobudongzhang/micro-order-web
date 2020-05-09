@@ -40,8 +40,8 @@ func main() {
 
 	//新建订单接口
 	authHandler := http.HandlerFunc(handler.New)
-	service.Handle("/orders/new", handler.AuthWrapper(authHandler))
-	service.HandleFunc("/", handler.Hello)
+	service.Handle("/order/new", handler.AuthWrapper(authHandler))
+	service.HandleFunc("/order/hello", handler.Hello)
 
 	// run service
 	if err := service.Run(); err != nil {
