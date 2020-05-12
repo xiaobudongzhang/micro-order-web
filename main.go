@@ -4,19 +4,30 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/micro-in-cn/tutorials/microservice-in-micro/part4/basic/common"
 	"github.com/xiaobudongzhang/micro-order-web/handler"
 
 	"github.com/micro/cli/v2"
-	log "github.com/micro/go-micro/v2/logger"
 	"github.com/micro/go-micro/v2/registry"
 	"github.com/micro/go-micro/v2/registry/etcd"
+	log "github.com/micro/go-micro/v2/util/log"
 	"github.com/micro/go-micro/v2/web"
+	"github.com/micro/go-plugins/config/source/grpc/v2"
 	basic "github.com/xiaobudongzhang/micro-basic/basic"
 	"github.com/xiaobudongzhang/micro-basic/config"
 )
 
+var (
+	appName = "order_web"
+	cfg     = &appCfg{}
+)
+
+type appCfg struct {
+	common.AppCfg
+}
+
 func main() {
-	basic.Init()
+	initCfg()
 
 	micReg := etcd.NewRegistry(registryOptions)
 	// create new web service
@@ -50,6 +61,30 @@ func main() {
 }
 
 func registryOptions(ops *registry.Options) {
-	etcdCfg := config.GetEtcdConfig()
-	ops.Addrs = []string{fmt.Sprintf("%s:%d", etcdCfg.GetHost(), etcdCfg.GetPort())}
+	etcdCfg := &common.Etcd{}
+	err := config.C().App("etcd", etcdCfg)
+	if err != nil {
+
+		log.Log(err)
+		panic(err)
+	}
+	ops.Addrs = []string{fmt.Sprintf("%s:%d", etcdCfg.Host, etcdCfg.Port)}
+}
+
+func initCfg() {
+	source := grpc.NewSource(
+		grpc.WithAddress("127.0.0.1:9600"),
+		grpc.WithPath("micro"),
+	)
+
+	basic.Init(config.WithSource(source))
+
+	err := config.C().App(appName, cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	log.Logf("配置 cfg:%v", cfg)
+
+	return
 }

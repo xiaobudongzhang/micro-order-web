@@ -18,7 +18,7 @@ replace github.com/xiaobudongzhang/micro-order-web => /data/ndemo/micro-order-we
 
 require (
 	github.com/gorilla/sessions v1.2.0 // indirect
-	github.com/micro-in-cn/tutorials/microservice-in-micro v0.0.0-20200430044506-2451e30bf530
+	github.com/micro-in-cn/tutorials/microservice-in-micro v0.0.0-20200510134214-a0f89cb675dc
 	github.com/micro/go-micro/v2 v2.6.0
 	github.com/xiaobudongzhang/micro-auth v1.1.1
 	github.com/xiaobudongzhang/micro-inventory-srv v1.0.0
