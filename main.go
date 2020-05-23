@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/xiaobudongzhang/micro-basic/common"
 	"github.com/xiaobudongzhang/micro-order-web/handler"
@@ -34,6 +35,8 @@ func main() {
 	service := web.NewService(
 		web.Name("mu.micro.book.web.order"),
 		web.Version("latest"),
+		web.RegisterTTL(time.Second*15),
+		web.RegisterInterval(time.Second*10),
 		web.Registry(micReg),
 		web.Address(":8091"),
 	)
