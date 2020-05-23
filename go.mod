@@ -20,6 +20,7 @@ require (
 	github.com/gorilla/sessions v1.2.0 // indirect
 	github.com/micro-in-cn/tutorials/microservice-in-micro v0.0.0-20200510134214-a0f89cb675dc
 	github.com/micro/go-micro/v2 v2.6.0
+	github.com/micro/go-plugins/wrapper/breaker/hystrix/v2 v2.5.0 // indirect
 	github.com/xiaobudongzhang/micro-auth v1.1.1
 	github.com/xiaobudongzhang/micro-inventory-srv v1.0.0
 	github.com/xiaobudongzhang/micro-order-srv v0.0.0-00010101000000-000000000000

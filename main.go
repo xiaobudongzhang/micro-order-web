@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/micro-in-cn/tutorials/microservice-in-micro/part4/basic/common"
+	"github.com/xiaobudongzhang/micro-basic/common"
 	"github.com/xiaobudongzhang/micro-order-web/handler"
 
 	"github.com/micro/cli/v2"

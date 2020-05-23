@@ -7,8 +7,11 @@ import (
 	"strconv"
 	"time"
 
+	hystrix_go "github.com/afex/hystrix-go/hystrix"
+
 	"github.com/micro/go-micro/v2/client"
 	"github.com/micro/go-micro/v2/util/log"
+	"github.com/micro/go-plugins/wrapper/breaker/hystrix/v2"
 	auth "github.com/xiaobudongzhang/micro-auth/proto/auth"
 	invS "github.com/xiaobudongzhang/micro-inventory-srv/proto/inventory"
 	orders "github.com/xiaobudongzhang/micro-order-srv/proto/order"
@@ -28,10 +31,21 @@ type Error struct {
 
 func Init() {
 	hystrix_go.DefaultVolumeThreshold = 1
-	hystrix_go.DefaultErrorPercentThresHold = 1
+	hystrix_go.DefaultErrorPercentThreshold = 1
 
-	serviceClient = orders.NewOrdersService("mu.micro.book.service.order", client.DefaultClient)
-	authClient = auth.NewService("mu.micro.book.service.auth", client.DefaultClient)
+	c1 := hystrix.NewClientWrapper()(client.DefaultClient)
+
+	c1.Init(
+		client.Retries(3),
+		client.Retry(
+			func(ctx context.Context, req client.Request, retryCount int, err error) (bool, error) {
+				log.Log(req.Method(), retryCount, "client retry")
+				return true, nil
+			}),
+	)
+
+	serviceClient = orders.NewOrdersService("mu.micro.book.service.order", c1)
+	authClient = auth.NewService("mu.micro.book.service.auth", c1)
 }
 
 func New(w http.ResponseWriter, r *http.Request) {
