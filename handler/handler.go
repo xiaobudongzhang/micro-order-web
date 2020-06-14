@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+
 	"net/http"
 	"strconv"
 	"time"
@@ -16,6 +17,8 @@ import (
 	invS "github.com/xiaobudongzhang/micro-inventory-srv/proto/inventory"
 	orders "github.com/xiaobudongzhang/micro-order-srv/proto/order"
 	"github.com/xiaobudongzhang/micro-plugins/session"
+	//context2 "github.com/xiaobudongzhang/seata-golang/client/context"
+	//"github.com/xiaobudongzhang/seata-golang/client/tm"
 )
 
 var (
@@ -46,6 +49,7 @@ func Init() {
 
 	serviceClient = orders.NewOrdersService("mu.micro.book.service.order", c1)
 	authClient = auth.NewService("mu.micro.book.service.auth", c1)
+	invClient = invS.NewInventoryService("mu.micro.book.service.inventory", c1)
 }
 
 func New(w http.ResponseWriter, r *http.Request) {
@@ -54,29 +58,65 @@ func New(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "非法请求", 400)
 		return
 	}
+	ctx := r.Context()
+
+
+	userId := session.GetSession(w, r).Values["userId"].(int64)
 
 	r.ParseForm()
 
 	bookId, _ := strconv.ParseInt(r.Form.Get("bookId"), 10, 10)
-
 	response := map[string]interface{}{}
 
-	rsp, err := serviceClient.New(context.TODO(), &orders.Request{
-		BookId: bookId,
-		UserId: session.GetSession(w, r).Values["userId"].(int64),
+
+
+	//rootContext := ctx.(*context2.RootContext)
+	//businessActionContextA := &context2.BusinessActionContext{
+	//	RootContext: rootContext,
+	//	ActionContext: make(map[string]interface{}),
+	//}
+	//
+	//
+	//businessActionContextB := &context2.BusinessActionContext{
+	//	RootContext: rootContext,
+	//	ActionContext: make(map[string]interface{}),
+	//}
+	//businessActionContextB.ActionContext["hello"] = "hello world,this is from BusinessActionContext B"
+	//
+
+
+	rsp1, err1 := invClient.Sell(ctx, &invS.Request{
+		BookId: bookId, UserId: userId,
 	})
 
-	response["ref"] = time.Now().UnixNano()
+	rsp, err := serviceClient.New(ctx, &orders.Request{
+		BookId: bookId,
+		UserId: userId,
+		OrderId:rsp1.InvH.Id,
+	})
 
+	if err1 != nil {
+		log.Logf("sell 调用库存服务失败：%s", err1.Error())
+		return
+	}
 	if err != nil {
 		response["success"] = false
 		response["error"] = Error{
 			Detail: err.Error(),
 		}
-	} else {
-		response["success"] = true
-		response["orderId"] = rsp.Order.Id
 	}
+
+
+
+
+
+
+	response["ref"] = time.Now().UnixNano()
+
+
+	response["success"] = true
+	response["orderId"] = rsp.Order.Id
+
 
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 

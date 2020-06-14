@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/opentracing/opentracing-go"
+	tracer "github.com/xiaobudongzhang/micro-plugins/tracer/myjaeger"
+	"github.com/xiaobudongzhang/micro-plugins/tracer/myopentracing/stdmicro"
 	"net/http"
 	"time"
 
@@ -19,7 +22,7 @@ import (
 )
 
 var (
-	appName = "order_web"
+	appName = "orders_web"
 	cfg     = &appCfg{}
 )
 
@@ -31,6 +34,16 @@ func main() {
 	initCfg()
 
 	micReg := etcd.NewRegistry(registryOptions)
+
+
+	t, io, err := tracer.NewTracer(cfg.Name, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer io.Close()
+
+	opentracing.SetGlobalTracer(t)
+
 	// create new web service
 	service := web.NewService(
 		web.Name("mu.micro.book.web.order"),
@@ -38,7 +51,7 @@ func main() {
 		web.RegisterTTL(time.Second*15),
 		web.RegisterInterval(time.Second*10),
 		web.Registry(micReg),
-		web.Address(":8091"),
+		web.Address(":8098"),
 	)
 
 	// 初始化服务
@@ -54,7 +67,9 @@ func main() {
 
 	//新建订单接口
 	authHandler := http.HandlerFunc(handler.New)
-	service.Handle("/order/new", handler.AuthWrapper(authHandler))
+
+
+	service.Handle("/order/new", stdmicro.TracerWrapper(handler.AuthWrapper(authHandler)))
 	service.HandleFunc("/order/hello", handler.Hello)
 
 	// run service
