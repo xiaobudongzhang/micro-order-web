@@ -3,7 +3,10 @@ package handler
 import (
 	"context"
 	"encoding/json"
-
+	context2 "github.com/xiaobudongzhang/seata-golang/client/context"
+	"github.com/xiaobudongzhang/seata-golang/client/tm"
+	"github.com/xiaobudongzhang/seata-golang/client/config"
+	"github.com/micro/go-micro/v2/metadata"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,8 +20,8 @@ import (
 	invS "github.com/xiaobudongzhang/micro-inventory-srv/proto/inventory"
 	orders "github.com/xiaobudongzhang/micro-order-srv/proto/order"
 	"github.com/xiaobudongzhang/micro-plugins/session"
-	//context2 "github.com/xiaobudongzhang/seata-golang/client/context"
-	//"github.com/xiaobudongzhang/seata-golang/client/tm"
+	clients "github.com/xiaobudongzhang/seata-golang/client"
+	//"github.com/xiaobudongzhang/seata-golang/client/tcc"
 )
 
 var (
@@ -58,8 +61,43 @@ func New(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "非法请求", 400)
 		return
 	}
+
+
+	config.InitConf("D:\\micro\\micro-order-web\\conf>\\seate_client.yml")
+	clients.NewRpcClient()
+	tm.Implement(ProxySvc)
+
+	response := ProxySvc.CreateSo(w,r)
+
+
+
+
+	w.Header().Add("Content-Type", "application/json; charset=utf-8")
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+}
+
+func Hello(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("hello order web"))
+}
+
+
+
+
+
+
+
+type Svc struct {
+
+}
+
+func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request) map[string]interface{} {
 	ctx := r.Context()
 
+	rootContext := ctx.(*context2.RootContext)
 
 	userId := session.GetSession(w, r).Values["userId"].(int64)
 
@@ -68,21 +106,10 @@ func New(w http.ResponseWriter, r *http.Request) {
 	bookId, _ := strconv.ParseInt(r.Form.Get("bookId"), 10, 10)
 	response := map[string]interface{}{}
 
-
-
-	//rootContext := ctx.(*context2.RootContext)
-	//businessActionContextA := &context2.BusinessActionContext{
-	//	RootContext: rootContext,
-	//	ActionContext: make(map[string]interface{}),
-	//}
-	//
-	//
-	//businessActionContextB := &context2.BusinessActionContext{
-	//	RootContext: rootContext,
-	//	ActionContext: make(map[string]interface{}),
-	//}
-	//businessActionContextB.ActionContext["hello"] = "hello world,this is from BusinessActionContext B"
-	//
+	//设置header
+	md := make(map[string]string)
+	md["xid"] = rootContext.GetXID()
+	ctx = metadata.NewContext(ctx, md)
 
 
 	rsp1, err1 := invClient.Sell(ctx, &invS.Request{
@@ -97,7 +124,7 @@ func New(w http.ResponseWriter, r *http.Request) {
 
 	if err1 != nil {
 		log.Logf("sell 调用库存服务失败：%s", err1.Error())
-		return
+		return nil
 	}
 	if err != nil {
 		response["success"] = false
@@ -106,26 +133,39 @@ func New(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-
-
-
-
-
 	response["ref"] = time.Now().UnixNano()
 
 
 	response["success"] = true
 	response["orderId"] = rsp.Order.Id
+	return  response
+}
 
+var service = &Svc{}
 
-	w.Header().Add("Content-Type", "application/json; charset=utf-8")
+type ProxyService struct {
+	*Svc
+	CreateSo func(w http.ResponseWriter, r *http.Request) map[string]interface{}{}
+}
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+var methodTransactionInfo = make(map[string]*tm.TransactionInfo)
+
+func init() {
+	methodTransactionInfo["CreateSo"] = &tm.TransactionInfo{
+		TimeOut:     60000000,
+		Name:        "CreateSo",
+		Propagation: tm.REQUIRED,
 	}
 }
 
-func Hello(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello order web"))
+func (svc *ProxyService) GetProxyService() interface{} {
+	return svc.Svc
+}
+
+func (svc *ProxyService) GetMethodTransactionInfo(methodName string) *tm.TransactionInfo {
+	return methodTransactionInfo[methodName]
+}
+
+var ProxySvc = &ProxyService{
+	Svc: service,
 }
