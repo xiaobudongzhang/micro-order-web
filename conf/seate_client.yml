@@ -21,9 +21,9 @@ getty:
     tcp_w_buf_size : 65536
     pkg_rq_size : 512
     pkg_wq_size : 256
-    tcp_read_timeout : "1s"
-    tcp_write_timeout : "5s"
-    wait_timeout : "1s"
+    tcp_read_timeout : "5s"
+    tcp_write_timeout : "10s"
+    wait_timeout : "5s"
     max_msg_len : 4096
     session_name : "client"
 tm:

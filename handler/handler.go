@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"context"
 	"encoding/json"
+	"fmt"
 	context2 "github.com/xiaobudongzhang/seata-golang/client/context"
 	"github.com/xiaobudongzhang/seata-golang/client/tm"
 	"github.com/xiaobudongzhang/seata-golang/client/config"
@@ -61,13 +63,14 @@ func New(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "非法请求", 400)
 		return
 	}
-
-
 	config.InitConf("D:\\micro\\micro-order-web\\conf\\seate_client.yml")
 	clients.NewRpcClient()
 	tm.Implement(ProxySvc)
 
-	err3 := ProxySvc.CreateSo(w,r)
+
+
+	err3 := ProxySvc.CreateSo(w,r, context.Background())
+
 	response := map[string]interface{}{}
 	if err3 != nil {
 
@@ -106,21 +109,24 @@ type Svc struct {
 
 }
 
-func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-
-	rootContext := &context2.RootContext{}
-
-	userId := session.GetSession(w, r).Values["userId"].(int64)
-
+func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request, ctx2 context.Context) error {
 	r.ParseForm()
+
+	ctx := r.Context()
+	userId := session.GetSession(w, r).Values["userId"].(int64)
 
 	bookId, _ := strconv.ParseInt(r.Form.Get("bookId"), 10, 10)
 
+	fmt.Println("new order")
 
+	ctx3 := ctx2.(*context2.RootContext)
 	//设置header
 	md := make(map[string]string)
-	md["xid"] = rootContext.GetXID()
+	md["xid"] = ctx3.GetXID()
+
+	fmt.Printf("xid:%v", md)
+
+
 	ctx = metadata.NewContext(ctx, md)
 
 
@@ -133,7 +139,8 @@ func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request) error {
 		UserId: userId,
 		OrderId:rsp1.InvH.Id,
 	})
-
+	time.Sleep(time.Second * 15)
+	return errors.New("there is a error")
 	if err1 != nil {
 		log.Logf("sell 调用库存服务失败：%s", err1.Error())
 		return err1
@@ -150,14 +157,14 @@ var service = &Svc{}
 
 type ProxyService struct {
 	*Svc
-	CreateSo func(w http.ResponseWriter, r *http.Request) error
+	CreateSo func(w http.ResponseWriter, r *http.Request, c context.Context) error
 }
 
 var methodTransactionInfo = make(map[string]*tm.TransactionInfo)
 
 func init() {
 	methodTransactionInfo["CreateSo"] = &tm.TransactionInfo{
-		TimeOut:     60000000,
+		TimeOut:     600000000,
 		Name:        "CreateSo",
 		Propagation: tm.REQUIRED,
 	}
