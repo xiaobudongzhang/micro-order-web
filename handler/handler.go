@@ -34,7 +34,7 @@ type Error struct {
 	Code   string `json:"code"`
 	Detail string `json:"detail"`
 }
-
+var myid int64
 func Init() {
 	hystrix_go.DefaultVolumeThreshold = 1
 	hystrix_go.DefaultErrorPercentThreshold = 1
@@ -63,13 +63,25 @@ func New(w http.ResponseWriter, r *http.Request) {
 	}
 
 
-	config.InitConf("D:\\micro\\micro-order-web\\conf>\\seate_client.yml")
+	config.InitConf("D:\\micro\\micro-order-web\\conf\\seate_client.yml")
 	clients.NewRpcClient()
 	tm.Implement(ProxySvc)
 
-	response := ProxySvc.CreateSo(w,r)
+	err3 := ProxySvc.CreateSo(w,r)
+	response := map[string]interface{}{}
+	if err3 != nil {
+
+		response["success"] = false
+		response["error"] = Error{
+			Detail: err3.Error(),
+		}
+	}
+
+	response["ref"] = time.Now().UnixNano()
 
 
+	response["success"] = true
+	response["orderId"] = myid
 
 
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
@@ -94,17 +106,17 @@ type Svc struct {
 
 }
 
-func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request) map[string]interface{} {
+func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	rootContext := ctx.(*context2.RootContext)
+	rootContext := &context2.RootContext{}
 
 	userId := session.GetSession(w, r).Values["userId"].(int64)
 
 	r.ParseForm()
 
 	bookId, _ := strconv.ParseInt(r.Form.Get("bookId"), 10, 10)
-	response := map[string]interface{}{}
+
 
 	//设置header
 	md := make(map[string]string)
@@ -124,28 +136,21 @@ func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request) map[string]inte
 
 	if err1 != nil {
 		log.Logf("sell 调用库存服务失败：%s", err1.Error())
-		return nil
+		return err1
 	}
 	if err != nil {
-		response["success"] = false
-		response["error"] = Error{
-			Detail: err.Error(),
-		}
+		return err
 	}
 
-	response["ref"] = time.Now().UnixNano()
-
-
-	response["success"] = true
-	response["orderId"] = rsp.Order.Id
-	return  response
+	myid = rsp.Order.Id
+	return  nil
 }
 
 var service = &Svc{}
 
 type ProxyService struct {
 	*Svc
-	CreateSo func(w http.ResponseWriter, r *http.Request) map[string]interface{}{}
+	CreateSo func(w http.ResponseWriter, r *http.Request) error
 }
 
 var methodTransactionInfo = make(map[string]*tm.TransactionInfo)
