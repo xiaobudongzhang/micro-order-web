@@ -1,4 +1,4 @@
-application_id: "aggregation-svc"
+application_id: "order-web"
 transaction_service_group: "127.0.0.1:8091"
 seata_version: "1.1.0"
 # tcp

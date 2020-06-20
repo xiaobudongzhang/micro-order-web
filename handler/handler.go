@@ -139,7 +139,7 @@ func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request, ctx2 context.Co
 		UserId: userId,
 		OrderId:rsp1.InvH.Id,
 	})
-	time.Sleep(time.Second * 15)
+
 	return errors.New("there is a error")
 	if err1 != nil {
 		log.Logf("sell 调用库存服务失败：%s", err1.Error())
@@ -164,7 +164,7 @@ var methodTransactionInfo = make(map[string]*tm.TransactionInfo)
 
 func init() {
 	methodTransactionInfo["CreateSo"] = &tm.TransactionInfo{
-		TimeOut:     600000000,
+		TimeOut:     900000000,
 		Name:        "CreateSo",
 		Propagation: tm.REQUIRED,
 	}
