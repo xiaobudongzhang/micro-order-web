@@ -13,7 +13,6 @@ import (
 	"time"
 
 	hystrix_go "github.com/afex/hystrix-go/hystrix"
-"errors"
 	"github.com/micro/go-micro/v2/client"
 	"github.com/micro/go-micro/v2/util/log"
 	"github.com/micro/go-plugins/wrapper/breaker/hystrix/v2"
@@ -133,13 +132,16 @@ func (svc *Svc) CreateSo(w http.ResponseWriter, r *http.Request, ctx2 context.Co
 		BookId: bookId, UserId: userId,
 	})
 
+	if err1 !=nil {
+		return err1
+	}
 	rsp, err := serviceClient.New(ctx, &orders.Request{
 		BookId: bookId,
 		UserId: userId,
 		OrderId:rsp1.InvH.Id,
 	})
 
-	return errors.New("there is a error")
+	//return errors.New("there is a error")
 	if err1 != nil {
 		log.Logf("sell 调用库存服务失败：%s", err1.Error())
 		return err1
